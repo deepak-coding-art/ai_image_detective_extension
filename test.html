@@ -3,154 +3,250 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Image Detector Test Page</title>
+    <title>AI Image Processor - Test Page</title>
     <style>
       body {
-        font-family: Arial, sans-serif;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
         background-color: #f5f5f5;
       }
-      .container {
-        background: white;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
+
       h1 {
-        color: #333;
         text-align: center;
+        color: #333;
         margin-bottom: 30px;
       }
+
+      .test-section {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .test-section h2 {
+        color: #555;
+        margin-bottom: 16px;
+      }
+
       .image-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-top: 16px;
       }
+
       .image-item {
-        background: #f9f9f9;
-        padding: 15px;
-        border-radius: 8px;
         text-align: center;
+        padding: 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        transition: border-color 0.3s ease;
       }
+
+      .image-item:hover {
+        border-color: #667eea;
+      }
+
       .image-item img {
         max-width: 100%;
         height: auto;
-        border-radius: 5px;
-        margin-bottom: 10px;
+        border-radius: 6px;
+        margin-bottom: 8px;
       }
-      .image-item h3 {
-        margin: 10px 0;
-        color: #555;
+
+      .image-item p {
+        margin: 0;
+        color: #666;
+        font-size: 14px;
       }
+
       .instructions {
-        background: #e3f2fd;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
         padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
       }
+
       .instructions h2 {
-        color: #1976d2;
         margin-top: 0;
+        color: white;
       }
+
       .instructions ol {
         margin: 0;
         padding-left: 20px;
       }
+
       .instructions li {
         margin-bottom: 8px;
-        color: #333;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>AI Image Detector Test Page</h1>
+    <h1>AI Image Processor - Test Page</h1>
 
-      <div class="instructions">
-        <h2>How to Test the Extension:</h2>
-        <ol>
-          <li>
-            Make sure the AI Image Detector extension is installed and enabled
-          </li>
-          <li>Click on the extension icon in your browser toolbar</li>
-          <li>You should see the number of images found on this page</li>
-          <li>Click "Process All Images" to analyze them one by one</li>
-          <li>
-            Or click individual 🔍 tags on images to analyze them individually
-          </li>
-          <li>Look for colored tags that appear on images (🤖=AI, 👤=Human)</li>
-        </ol>
-      </div>
+    <div class="instructions">
+      <h2>How to Test the Extension</h2>
+      <ol>
+        <li>
+          Make sure the AI Image Processor extension is installed and enabled
+        </li>
+        <li>Wait a few seconds for auto-detection to process large images</li>
+        <li>Look for 🔍 tags appearing on images (200px+ size)</li>
+        <li>Hover over tags to see quick analysis information</li>
+        <li>Click tags for detailed analysis results</li>
+        <li>Or right-click any image → "Process Image" for manual analysis</li>
+        <li>Check the extension popup for usage statistics</li>
+      </ol>
+    </div>
 
+    <div class="test-section">
+      <h2>Colorful Images</h2>
       <div class="image-grid">
         <div class="image-item">
           <img
             src="https://picsum.photos/400/300?random=1"
-            alt="Random landscape image 1"
+            alt="Random colorful image 1"
+            title="Test colorful image"
           />
-          <h3>Landscape Image 1</h3>
+          <p>Random colorful image 1</p>
         </div>
-
         <div class="image-item">
           <img
             src="https://picsum.photos/400/300?random=2"
-            alt="Random landscape image 2"
+            alt="Random colorful image 2"
+            title="Another test image"
           />
-          <h3>Landscape Image 2</h3>
+          <p>Random colorful image 2</p>
         </div>
-
         <div class="image-item">
           <img
             src="https://picsum.photos/400/300?random=3"
-            alt="Random landscape image 3"
+            alt="Random colorful image 3"
           />
-          <h3>Landscape Image 3</h3>
+          <p>Random colorful image 3</p>
         </div>
-
-        <div class="image-item">
-          <img
-            src="https://picsum.photos/400/300?random=4"
-            alt="Random landscape image 4"
-          />
-          <h3>Landscape Image 4</h3>
-        </div>
-
-        <div class="image-item">
-          <img
-            src="https://picsum.photos/400/300?random=5"
-            alt="Random landscape image 5"
-          />
-          <h3>Landscape Image 5</h3>
-        </div>
-
-        <div class="image-item">
-          <img
-            src="https://picsum.photos/400/300?random=6"
-            alt="Random landscape image 6"
-          />
-          <h3>Landscape Image 6</h3>
-        </div>
-      </div>
-
-      <div class="instructions">
-        <h2>Expected Behavior:</h2>
-        <ul>
-          <li>🔍 tags should appear on all images when the page loads</li>
-          <li>Clicking the extension should show "6" images found</li>
-          <li>"Process All Images" button should be visible and clickable</li>
-          <li>
-            Progress indicator should show "1/6 processed", "2/6 processed",
-            etc.
-          </li>
-          <li>After processing, tags should change to 🤖 (AI) or 👤 (Human)</li>
-          <li>
-            Clicking on processed tags should show detailed analysis results
-          </li>
-        </ul>
       </div>
     </div>
+
+    <div class="test-section">
+      <h2>Grayscale Images</h2>
+      <div class="image-grid">
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/400/300?grayscale&random=4"
+            alt="Grayscale image 1"
+            title="Grayscale test"
+          />
+          <p>Grayscale image 1</p>
+        </div>
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/400/300?grayscale&random=5"
+            alt="Grayscale image 2"
+          />
+          <p>Grayscale image 2</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>Different Sizes (Auto-detection threshold: 200px)</h2>
+      <div class="image-grid">
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/150/100?random=6"
+            alt="Small image"
+            title="Small test image"
+          />
+          <p>Small image (150x100) - Won't auto-detect</p>
+        </div>
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/200/150?random=7"
+            alt="Medium image"
+            title="Medium test image"
+          />
+          <p>Medium image (200x150) - Will auto-detect</p>
+        </div>
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/600/400?random=8"
+            alt="Large image"
+            title="Large test image"
+          />
+          <p>Large image (600x400) - Will auto-detect</p>
+        </div>
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/300/500?random=9"
+            alt="Portrait image"
+            title="Portrait test"
+          />
+          <p>Portrait image (300x500) - Will auto-detect</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>Images with Alt Text</h2>
+      <div class="image-grid">
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/400/300?random=9"
+            alt="This is a detailed alt text description for testing purposes"
+            title="Image with detailed alt text"
+          />
+          <p>Image with detailed alt text</p>
+        </div>
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/400/300?random=10"
+            alt=""
+            title="Image with no alt text"
+          />
+          <p>Image with no alt text</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>Bright and Dark Images</h2>
+      <div class="image-grid">
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/400/300?blur=1&random=11"
+            alt="Blurry bright image"
+            title="Bright blurry image"
+          />
+          <p>Bright blurry image</p>
+        </div>
+        <div class="image-item">
+          <img
+            src="https://picsum.photos/400/300?random=12"
+            alt="Normal brightness image"
+            title="Normal brightness"
+          />
+          <p>Normal brightness image</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Add some interactivity to show which images are being tested
+      document.querySelectorAll(".image-item img").forEach((img) => {
+        img.addEventListener("click", function () {
+          this.style.transform = "scale(1.05)";
+          setTimeout(() => {
+            this.style.transform = "scale(1)";
+          }, 200);
+        });
+      });
+    </script>
   </body>
 </html>

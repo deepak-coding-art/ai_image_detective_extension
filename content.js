@@ -11,82 +11,20 @@ const CONFIG = {
   tagFontFamily: "Arial, sans-serif",
 };
 
-// Store processed images data for current page
+// Store processed images data
 const processedImages = new Map();
-let isProcessing = false;
-let autoProcessEnabled = false;
-let processingQueue = []; // Queue for images that need processing
-let pageStatistics = {
-  processedCount: 0,
-  lastProcessed: "Never",
-  aiCount: 0,
-  humanCount: 0,
-  totalProcessed: 0,
-  averageConfidence: 0,
-};
 
-// Listen for messages from background script and popup
+// Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "processImage") {
     processImage(request.imageUrl, request.imageInfo);
-  } else if (request.action === "getImageCount") {
-    const count = getImageCount();
-    sendResponse({ count: count });
-  } else if (request.action === "getPageStatistics") {
-    sendResponse(pageStatistics);
-  } else if (request.action === "processAllImages") {
-    if (!isProcessing) {
-      processAllImages().then(() => {
-        sendResponse({ success: true });
-      });
-    } else {
-      sendResponse({ success: false, error: "Already processing" });
-    }
-  } else if (request.action === "stopProcessing") {
-    isProcessing = false;
-    processingQueue = []; // Clear the queue when stopping
-    sendResponse({ success: true });
-  } else if (request.action === "updateAutoProcessSetting") {
-    autoProcessEnabled = request.enabled;
-    sendResponse({ success: true });
   }
 });
 
-// Auto-detect and add tags to large images when page loads (but don't process)
+// Auto-detect and process large images when page loads
 document.addEventListener("DOMContentLoaded", () => {
-  // Reset page statistics for new page
-  resetPageStatistics();
-
-  // Load auto-process setting
-  chrome.storage.local.get(["autoProcessEnabled"], function (result) {
-    autoProcessEnabled = result.autoProcessEnabled || false;
-
-    // Add tags to images
-    setTimeout(() => {
-      addTagsToImages();
-
-      // Auto-process if enabled
-      if (autoProcessEnabled) {
-        console.log("Auto-processing images");
-        setTimeout(() => {
-          processAllImages();
-        }, 2000); // Wait a bit longer for images to fully load
-      }
-    }, 1000);
-  });
+  setTimeout(autoDetectAndProcessImages, 1000); // Wait for images to load
 });
-
-// Function to reset page statistics
-function resetPageStatistics() {
-  pageStatistics = {
-    processedCount: 0,
-    lastProcessed: "Never",
-    aiCount: 0,
-    humanCount: 0,
-    totalProcessed: 0,
-    averageConfidence: 0,
-  };
-}
 
 // Also detect images that load dynamically
 const observer = new MutationObserver((mutations) => {
@@ -107,24 +45,8 @@ const observer = new MutationObserver((mutations) => {
           }
 
           images.forEach((img) => {
-            // Use the same criteria as other functions
-            if (isLargeImage(img) && img.src && !img.src.startsWith("data:")) {
-              setTimeout(() => addTagToImage(img), 500);
-
-              // Auto-process if enabled
-              if (autoProcessEnabled) {
-                setTimeout(async () => {
-                  // Add to processing queue
-                  if (!processingQueue.includes(img)) {
-                    processingQueue.push(img);
-                  }
-
-                  // Start processing if not already processing
-                  if (!isProcessing) {
-                    await processQueuedImages();
-                  }
-                }, 1000);
-              }
+            if (isLargeImage(img)) {
+              setTimeout(() => processImageIfNotProcessed(img), 500);
             }
           });
         }
@@ -138,26 +60,12 @@ observer.observe(document.body, {
   subtree: true,
 });
 
-// Function to get count of large images on the page
-function getImageCount() {
-  const images = document.querySelectorAll("img");
-  let count = 0;
-  images.forEach((img) => {
-    // Use the same criteria as processAllImages
-    if (isLargeImage(img) && img.src && !img.src.startsWith("data:")) {
-      count++;
-    }
-  });
-  return count;
-}
-
-// Function to add tags to all large images (without processing)
-function addTagsToImages() {
+// Function to auto-detect and process large images
+function autoDetectAndProcessImages() {
   const images = document.querySelectorAll("img");
   images.forEach((img) => {
-    // Use the same criteria as getImageCount and processAllImages
-    if (isLargeImage(img) && img.src && !img.src.startsWith("data:")) {
-      addTagToImage(img);
+    if (isLargeImage(img)) {
+      processImageIfNotProcessed(img);
     }
   });
 }
@@ -170,210 +78,25 @@ function isLargeImage(img) {
   );
 }
 
-// Add a clickable tag to an image (without processing)
-function addTagToImage(imgElement) {
-  const imageUrl = imgElement.src;
-  if (!imgElement.aiProcessorTag && imageUrl && !imageUrl.startsWith("data:")) {
-    const tag = document.createElement("div");
-    tag.className = "ai-image-processor-tag unprocessed";
-    tag.innerHTML = "🔍";
-    tag.title = "Click to analyze this image";
+// Process image if not already processed
+function processImageIfNotProcessed(img) {
+  const imageUrl = img.src;
+  if (
+    !processedImages.has(imageUrl) &&
+    imageUrl &&
+    !imageUrl.startsWith("data:")
+  ) {
+    const imageInfo = {
+      src: imageUrl,
+      alt: img.alt || "",
+      title: img.title || "",
+    };
 
-    tag.style.cssText = `
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: ${CONFIG.tagSize}px;
-      height: ${CONFIG.tagSize}px;
-      background-color: ${CONFIG.tagColor};
-      color: ${CONFIG.tagTextColor};
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: bold;
-      z-index: 1000;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      transition: all 0.3s ease;
-    `;
+    // Add a temporary tag while processing
+    addProcessingTag(img);
 
-    // Add hover effect
-    tag.addEventListener("mouseenter", () => {
-      tag.style.backgroundColor = CONFIG.tagHoverColor;
-      tag.style.transform = "scale(1.1)";
-    });
-
-    tag.addEventListener("mouseleave", () => {
-      tag.style.backgroundColor = CONFIG.tagColor;
-      tag.style.transform = "scale(1)";
-    });
-
-    // Add click event to process this specific image
-    tag.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-
-      const imageInfo = {
-        src: imageUrl,
-        alt: imgElement.alt || "",
-        title: imgElement.title || "",
-      };
-
-      // Process this specific image
-      await processImage(imageUrl, imageInfo, imgElement);
-    });
-
-    // Make the image container relative positioned if it's not already
-    const container = imgElement.parentElement;
-    if (container && getComputedStyle(container).position === "static") {
-      container.style.position = "relative";
-    }
-
-    // If no container or container is body, make image relative
-    if (!container || container === document.body) {
-      imgElement.style.position = "relative";
-    }
-
-    const targetElement =
-      container && container !== document.body ? container : imgElement;
-    targetElement.appendChild(tag);
-
-    // Store reference to tag
-    imgElement.aiProcessorTag = tag;
+    processImage(imageUrl, imageInfo, img);
   }
-}
-
-// Function to process queued images
-async function processQueuedImages() {
-  if (isProcessing || processingQueue.length === 0) return;
-
-  isProcessing = true;
-
-  // Get all images for progress tracking
-  const allImages = document.querySelectorAll("img");
-  const largeImages = Array.from(allImages).filter(
-    (img) => isLargeImage(img) && img.src && !img.src.startsWith("data:")
-  );
-
-  let processedCount = 0;
-  const totalCount = largeImages.length;
-
-  // Send initial progress
-  chrome.runtime.sendMessage({
-    action: "processingProgress",
-    current: processedCount,
-    total: totalCount,
-  });
-
-  // Process all images in the queue
-  while (processingQueue.length > 0 && isProcessing) {
-    const img = processingQueue.shift(); // Remove from queue
-
-    if (img && img.src && !img.src.startsWith("data:")) {
-      try {
-        const imageInfo = {
-          src: img.src,
-          alt: img.alt || "",
-          title: img.title || "",
-        };
-
-        // Add processing tag
-        addProcessingTag(img);
-
-        // Process the image
-        await processImage(img.src, imageInfo, img);
-
-        processedCount++;
-
-        // Send progress update
-        chrome.runtime.sendMessage({
-          action: "processingProgress",
-          current: processedCount,
-          total: totalCount,
-        });
-
-        // Small delay between processing
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch (error) {
-        console.error("Error processing queued image:", error);
-        processedCount++;
-
-        // Send progress update even for failed images
-        chrome.runtime.sendMessage({
-          action: "processingProgress",
-          current: processedCount,
-          total: totalCount,
-        });
-      }
-    }
-  }
-
-  isProcessing = false;
-
-  // Send final detection summary
-  if (processedCount > 0) {
-    sendDetectionSummary();
-  }
-}
-
-// Function to process all images one by one
-async function processAllImages() {
-  if (isProcessing) return;
-
-  // Clear existing queue and add all current images
-  processingQueue = [];
-  const images = document.querySelectorAll("img");
-  const largeImages = Array.from(images).filter(
-    (img) => isLargeImage(img) && img.src && !img.src.startsWith("data:")
-  );
-
-  // Add all images to the queue
-  largeImages.forEach((img) => {
-    if (!processingQueue.includes(img)) {
-      processingQueue.push(img);
-    }
-  });
-
-  // Process the queue
-  await processQueuedImages();
-}
-
-// Function to update page statistics
-function updatePageStatistics(analysis) {
-  pageStatistics.processedCount++;
-  pageStatistics.lastProcessed = "Just now";
-  pageStatistics.totalProcessed++;
-
-  if (analysis.aiDetection && analysis.aiDetection.success) {
-    const { prediction, confidence } = analysis.aiDetection;
-    if (prediction === "artificial") {
-      pageStatistics.aiCount++;
-    } else {
-      pageStatistics.humanCount++;
-    }
-
-    // Update average confidence
-    const totalConfidence =
-      pageStatistics.averageConfidence * (pageStatistics.totalProcessed - 1) +
-      confidence;
-    pageStatistics.averageConfidence =
-      totalConfidence / pageStatistics.totalProcessed;
-  }
-}
-
-// Function to send detection summary to popup
-function sendDetectionSummary() {
-  chrome.runtime.sendMessage({
-    action: "detectionSummary",
-    data: {
-      aiCount: pageStatistics.aiCount,
-      humanCount: pageStatistics.humanCount,
-      totalProcessed: pageStatistics.totalProcessed,
-      averageConfidence: pageStatistics.averageConfidence,
-    },
-  });
 }
 
 // Function to process the image
@@ -391,69 +114,59 @@ async function processImage(imageUrl, imageInfo, imgElement = null) {
 
     img.crossOrigin = "anonymous";
 
-    return new Promise((resolve, reject) => {
-      img.onload = async function () {
-        try {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
+    img.onload = async function () {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
 
-          // Get image data for analysis
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // Get image data for analysis
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-          // Perform basic image analysis
-          const analysis = analyzeImage(imageData, imageInfo);
+      // Perform basic image analysis
+      const analysis = analyzeImage(imageData, imageInfo);
 
-          // Perform AI detection automatically
-          try {
-            const aiDetectionResult = await performAIDetection(canvas);
-            analysis.aiDetection = aiDetectionResult;
+      // Perform AI detection automatically
+      try {
+        const aiDetectionResult = await performAIDetection(canvas);
+        analysis.aiDetection = aiDetectionResult;
 
-            // Update page statistics
-            updatePageStatistics(analysis);
+        // Store the AI detection result in chrome.storage.local
+        chrome.storage.local.set({
+          latestDetectionResult: aiDetectionResult,
+        });
+      } catch (error) {
+        console.error("AI detection failed:", error);
+        analysis.aiDetection = { success: false, error: error.message };
+      }
 
-            // Send detection summary after each successful processing
-            sendDetectionSummary();
-          } catch (error) {
-            console.error("AI detection failed:", error);
-            analysis.aiDetection = { success: false, error: error.message };
-          }
+      // Store the analysis result
+      processedImages.set(imageUrl, analysis);
 
-          // Store the analysis result
-          processedImages.set(imageUrl, analysis);
+      // If this was auto-detected, add a tag to the image
+      if (imgElement) {
+        addImageTag(imgElement, analysis, canvas);
+      } else {
+        // Display results for manual processing
+        showImageAnalysisResults(analysis, imageUrl);
+      }
 
-          // If this was auto-detected, add a tag to the image
-          if (imgElement) {
-            addImageTag(imgElement, analysis, canvas);
-          } else {
-            // Display results for manual processing
-            showImageAnalysisResults(analysis, imageUrl);
-          }
+      // Send result back to background script
+      chrome.runtime.sendMessage({
+        action: "imageProcessed",
+        imageUrl: imageUrl,
+        result: analysis,
+      });
+    };
 
-          // Send result back to background script
-          chrome.runtime.sendMessage({
-            action: "imageProcessed",
-            imageUrl: imageUrl,
-            result: analysis,
-          });
+    img.onerror = function () {
+      if (imgElement) {
+        removeImageTag(imgElement);
+      } else {
+        showNotification("Failed to load image for processing", "error");
+      }
+    };
 
-          resolve(analysis);
-        } catch (error) {
-          reject(error);
-        }
-      };
-
-      img.onerror = function () {
-        if (imgElement) {
-          removeImageTag(imgElement);
-        } else {
-          showNotification("Failed to load image for processing", "error");
-        }
-        reject(new Error("Failed to load image"));
-      };
-
-      img.src = imageUrl;
-    });
+    img.src = imageUrl;
   } catch (error) {
     console.error("Error processing image:", error);
     if (imgElement) {
@@ -461,7 +174,6 @@ async function processImage(imageUrl, imageInfo, imgElement = null) {
     } else {
       showNotification("Error processing image", "error");
     }
-    throw error;
   }
 }
 

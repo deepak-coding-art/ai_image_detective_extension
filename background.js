@@ -57,11 +57,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         processedImages: processedImages,
       });
     });
-  } else if (
-    request.action === "processingProgress" ||
-    request.action === "detectionSummary"
-  ) {
-    // Forward progress and detection summary messages to the popup
-    chrome.runtime.sendMessage(request);
   }
 });
