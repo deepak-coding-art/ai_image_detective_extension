@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Image Processor</title>
+    <style>
+      body {
+        width: 320px;
+        min-height: 400px;
+        margin: 0;
+        padding: 20px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 12px;
+      }
+
+      .header h1 {
+        margin: 0 0 8px 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      .header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 14px;
+      }
+
+      .stats {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+      }
+
+      .stat-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .stat-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .stat-label {
+        font-size: 14px;
+        opacity: 0.9;
+      }
+
+      .stat-value {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .process-section {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+      }
+
+      .process-section h3 {
+        margin: 0 0 12px 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .process-button {
+        width: 100%;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #4ade80, #22c55e);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 12px;
+      }
+
+      .process-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
+      }
+
+      .process-button:disabled {
+        background: rgba(255, 255, 255, 0.2);
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .stop-reset-button {
+        width: 100%;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 8px;
+      }
+
+      .stop-reset-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+      }
+
+      .stop-reset-button.reset {
+        background: linear-gradient(135deg, #6c757d, #495057);
+      }
+
+      .stop-reset-button.reset:hover {
+        box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+      }
+
+      .circular-progress {
+        display: none;
+        text-align: center;
+        margin-bottom: 16px;
+      }
+
+      .progress-circle {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 12px;
+      }
+
+      .progress-circle svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+      }
+
+      .progress-circle circle {
+        fill: none;
+        stroke-width: 6;
+      }
+
+      .progress-bg {
+        stroke: rgba(255, 255, 255, 0.2);
+      }
+
+      .progress-fill {
+        stroke: #4ade80;
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.5s ease;
+        stroke-dasharray: 0 220;
+      }
+
+      .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 14px;
+        font-weight: 600;
+        color: white;
+      }
+
+      .progress-label {
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 8px;
+      }
+
+      .results-charts {
+        display: none;
+        margin-top: 16px;
+      }
+
+      .chart-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .chart-label {
+        width: 80px;
+        font-size: 12px;
+        margin-right: 8px;
+      }
+
+      .chart-bar {
+        flex: 1;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .chart-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.3s ease;
+        width: 0%;
+      }
+
+      .chart-fill.human {
+        background: linear-gradient(90deg, #4ade80, #22c55e);
+      }
+
+      .chart-fill.ai {
+        background: linear-gradient(90deg, #ff6b6b, #ee5a52);
+      }
+
+      .chart-value {
+        width: 40px;
+        text-align: right;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 8px;
+      }
+
+      .instructions {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+      }
+
+      .instructions h3 {
+        margin: 0 0 12px 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .instructions ol {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .instructions li {
+        margin-bottom: 6px;
+      }
+
+      .features {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        backdrop-filter: blur(10px);
+      }
+
+      .features h3 {
+        margin: 0 0 12px 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .feature-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .feature-list li {
+        margin-bottom: 6px;
+        padding-left: 20px;
+        position: relative;
+      }
+
+      .feature-list li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #4ade80;
+        font-weight: bold;
+      }
+
+      .auto-process-toggle {
+        margin-bottom: 16px;
+        text-align: right;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+
+      .toggle-text {
+        font-size: 12px;
+        color: white;
+        opacity: 0.9;
+        margin-bottom: 6px;
+        text-align: right;
+      }
+
+      .toggle-label {
+        position: relative;
+        display: inline-block;
+        width: 30px;
+        height: 14px;
+      }
+
+      .toggle-label input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        border-radius: 7px;
+        transition: 0.4s;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 10px;
+        width: 10px;
+        left: 2px;
+        top: 2px;
+        background-color: white;
+        border-radius: 50%;
+        transition: 0.4s;
+      }
+
+      input:checked + .toggle-slider {
+        background-color: #4ade80;
+      }
+
+      input:focus + .toggle-slider {
+        box-shadow: 0 0 1px #4ade80;
+      }
+
+      input:checked + .toggle-slider:before {
+        transform: translateX(16px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>AI Image Detective</h1>
+      <p>Click on image tags to analyze them individually</p>
+    </div>
+
+    <div class="auto-process-toggle">
+      <div class="toggle-text">Auto-process on page load</div>
+      <label class="toggle-label">
+        <input type="checkbox" id="autoProcessToggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="stats">
+      <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600">
+        Page Statistics
+      </h3>
+      <div class="stat-item">
+        <span class="stat-label">Images Found:</span>
+        <span class="stat-value" id="imagesFound">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Images Processed:</span>
+        <span class="stat-value" id="processedCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Last Processed:</span>
+        <span class="stat-value" id="lastProcessed">Never</span>
+      </div>
+    </div>
+
+    <div class="process-section" id="processSection" style="display: none">
+      <h3>Process Images</h3>
+
+      <div
+        class="circular-progress"
+        id="circularProgress"
+        style="display: none"
+      >
+        <div class="progress-circle">
+          <svg>
+            <circle class="progress-bg" cx="40" cy="40" r="35"></circle>
+            <circle class="progress-fill" cx="40" cy="40" r="35"></circle>
+          </svg>
+          <div class="progress-text" id="progressText">0/0</div>
+        </div>
+        <div class="progress-label" id="progressLabel">
+          Processing images...
+        </div>
+      </div>
+
+      <div class="results-charts" id="resultsCharts">
+        <div class="chart-item">
+          <div class="chart-label">Human:</div>
+          <div class="chart-bar">
+            <div class="chart-fill human" id="humanChart"></div>
+          </div>
+          <div class="chart-value" id="humanValue">0</div>
+        </div>
+        <div class="chart-item">
+          <div class="chart-label">AI Generated:</div>
+          <div class="chart-bar">
+            <div class="chart-fill ai" id="aiChart"></div>
+          </div>
+          <div class="chart-value" id="aiValue">0</div>
+        </div>
+      </div>
+
+      <button class="process-button" id="processButton">
+        Process All Images
+      </button>
+
+      <button
+        class="stop-reset-button"
+        id="stopResetButton"
+        style="display: none"
+      >
+        Stop Processing
+      </button>
+    </div>
+
+    <div class="instructions">
+      <h3>How to Use</h3>
+      <ol>
+        <li>Navigate to any webpage with images</li>
+        <li>Click the extension to see how many images are found</li>
+        <li>Click "Process All Images" to analyze them one by one</li>
+        <li>Or click individual 🔍 tags on images to analyze them</li>
+        <li>Look for colored tags on images (🤖=AI, 👤=Human)</li>
+        <li>Right-click any image → "Process Image" for manual analysis</li>
+      </ol>
+    </div>
+
+    <div class="features">
+      <h3>Features</h3>
+      <ul class="feature-list">
+        <li>Manual image processing control</li>
+        <li>Real-time progress tracking</li>
+        <li>Individual image analysis</li>
+        <li>Visual confidence indicators</li>
+        <li>Works on any website</li>
+      </ul>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
