@@ -648,7 +648,7 @@ async function performAIDetection(canvas) {
           formData.append("file", blob, "image.jpg");
 
           const response = await fetch(
-            "https://detective.builddev.in/api/detect",
+            "https://ai_detective.builddev.in/api/detect",
             {
               method: "POST",
               body: formData,
