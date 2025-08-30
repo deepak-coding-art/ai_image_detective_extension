@@ -61,13 +61,27 @@ observer.observe(document.body, {
 });
 
 // Function to auto-detect and process large images
-function autoDetectAndProcessImages() {
+async function autoDetectAndProcessImages() {
   const images = document.querySelectorAll("img");
-  images.forEach((img) => {
-    if (isLargeImage(img)) {
-      processImageIfNotProcessed(img);
+  const largeImages = Array.from(images).filter((img) => isLargeImage(img));
+
+  console.log(`Found ${largeImages.length} large images to process`);
+
+  // Process each image with a 2-second delay between requests
+  for (let i = 0; i < largeImages.length; i++) {
+    const img = largeImages[i];
+
+    console.log(`Processing image ${i + 1}/${largeImages.length}:`, img.src);
+    processImageIfNotProcessed(img);
+
+    // Add 2-second delay before next image (except for the last one)
+    if (i < largeImages.length - 1) {
+      console.log(`Waiting 2 seconds before processing next image...`);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
-  });
+  }
+
+  console.log(`Completed processing ${largeImages.length} images`);
 }
 
 // Check if image is considered "large"
@@ -365,9 +379,21 @@ function showImageAnalysisResults(analysis, imageUrl) {
     aiDetectionHTML = `
       <div style="margin-bottom: 20px; padding: 16px; border-radius: 8px; background: #f39c1215; border-left: 4px solid #f39c12;">
         <h3 style="margin: 0 0 8px 0; color: #333;">AI Detection Results</h3>
-        <p style="margin: 0; color: #e67e22;">Analysis failed: ${
+        <p style="margin: 0 0 12px 0; color: #e67e22;">Analysis failed: ${
           analysis.aiDetection.error || "Unknown error"
         }</p>
+        <button id="retryAnalysis" style="
+          background: #3498db; 
+          color: white; 
+          border: none; 
+          padding: 8px 16px; 
+          border-radius: 4px; 
+          cursor: pointer; 
+          font-size: 14px;
+          transition: background-color 0.3s ease;
+        " onmouseover="this.style.backgroundColor='#2980b9'" onmouseout="this.style.backgroundColor='#3498db'">
+          🔄 Retry Analysis
+        </button>
       </div>
     `;
   } else {
@@ -406,7 +432,89 @@ function showImageAnalysisResults(analysis, imageUrl) {
     }
   });
 
+  // Add retry functionality if retry button exists
+  const retryButton = document.getElementById("retryAnalysis");
+  if (retryButton) {
+    retryButton.addEventListener("click", async () => {
+      // Disable button and show loading state
+      retryButton.disabled = true;
+      retryButton.innerHTML = "⏳ Retrying...";
+      retryButton.style.backgroundColor = "#95a5a6";
+
+      try {
+        // Close current modal
+        document.body.removeChild(modal);
+
+        // Find the original image element by src
+        const originalImg = document.querySelector(`img[src="${imageUrl}"]`);
+
+        // Retry the image processing
+        const updatedAnalysis = await retryImageAnalysis(
+          imageUrl,
+          analysis.imageInfo || {},
+          originalImg
+        );
+
+        // Show the updated results in a new modal
+        showImageAnalysisResults(updatedAnalysis, imageUrl);
+      } catch (error) {
+        console.error("Retry failed:", error);
+        showNotification("Retry failed. Please try again.", "error");
+      }
+    });
+  }
+
   showNotification("Image analysis completed!", "success");
+}
+
+// Function to retry image analysis (updates tag AND returns results for modal)
+async function retryImageAnalysis(imageUrl, imageInfo, imgElement = null) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = async function () {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const analysis = {
+        url: imageUrl,
+        width: img.width,
+        height: img.height,
+        size: canvas.toDataURL().length,
+        imageInfo: imageInfo,
+      };
+
+      try {
+        // Perform AI detection
+        const aiDetectionResult = await performAIDetection(canvas);
+        analysis.aiDetection = { success: true, ...aiDetectionResult };
+      } catch (error) {
+        console.error("AI detection failed during retry:", error);
+        analysis.aiDetection = { success: false, error: error.message };
+      }
+
+      // Store the analysis result
+      processedImages.set(imageUrl, analysis);
+
+      // If we have an image element, update its tag
+      if (imgElement) {
+        addImageTag(imgElement, analysis, canvas);
+      }
+
+      // Return the analysis for modal display
+      resolve(analysis);
+    };
+
+    img.onerror = function () {
+      reject(new Error("Failed to load image for retry"));
+    };
+
+    img.src = imageUrl;
+  });
 }
 
 // Function to add a processing tag to an image
@@ -484,7 +592,7 @@ function addImageTag(imgElement, analysis, canvas) {
    `;
 
   // Update tag appearance based on AI detection results if available
-  if (analysis.aiDetection && analysis.aiDetection.success) {
+  if (analysis.aiDetection) {
     updateTagAppearance(tag, analysis.aiDetection);
   } else {
     // Show loading state while AI detection is in progress
@@ -511,6 +619,9 @@ function addImageTag(imgElement, analysis, canvas) {
       } else {
         tag.style.backgroundColor = "#27ae60";
       }
+    } else if (analysis.aiDetection && !analysis.aiDetection.success) {
+      // Error state - keep red background
+      tag.style.backgroundColor = "#f0e381";
     } else {
       tag.style.backgroundColor = CONFIG.tagColor;
     }
@@ -631,10 +742,12 @@ function updateTagAppearance(tag, aiDetectionResult) {
       tag.title = `Likely Human (${confidencePercent}% confidence) - Click for details`;
     }
   } else {
-    // Reset to default state if AI detection failed
-    tag.innerHTML = "🔍";
-    tag.title = "AI analysis failed - Click to retry";
-    tag.style.backgroundColor = CONFIG.tagColor;
+    // Show error state if AI detection failed
+    tag.innerHTML = "❌";
+    tag.title = `AI analysis failed: ${
+      aiDetectionResult.error || "Unknown error"
+    } - Click to retry`;
+    tag.style.backgroundColor = "#f0e381"; // Red background for error
   }
 }
 
@@ -648,7 +761,7 @@ async function performAIDetection(canvas) {
           formData.append("file", blob, "image.jpg");
 
           const response = await fetch(
-            "https://ai_detective.builddev.in/api/detect",
+            "https://aidetective.builddev.in/api/detect",
             {
               method: "POST",
               body: formData,
@@ -656,6 +769,9 @@ async function performAIDetection(canvas) {
           );
 
           if (!response.ok) {
+            if (response.status === 429) {
+              throw new Error("Service is busy, try again later");
+            }
             throw new Error("Failed to analyze image");
           }
 
