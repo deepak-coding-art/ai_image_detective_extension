@@ -647,10 +647,13 @@ async function performAIDetection(canvas) {
           const formData = new FormData();
           formData.append("file", blob, "image.jpg");
 
-          const response = await fetch("http://localhost:3009/api/detect", {
-            method: "POST",
-            body: formData,
-          });
+          const response = await fetch(
+            "https://detective.builddev.in/api/detect",
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
 
           if (!response.ok) {
             throw new Error("Failed to analyze image");
