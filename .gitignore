@@ -1,0 +1,48 @@
+# Browser extension build artifacts
+dist/
+build/
+*.zip
+*.crx
+*.pem
+
+# Node.js dependencies (if using npm/yarn for development)
+node_modules/
+package-lock.json
+yarn.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Web store credentials and keys
+web-store-upload-credentials.json
+*.key
